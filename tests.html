@@ -1,0 +1,23 @@
+<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>お得比較のテスト</title><style>body{font:16px sans-serif;padding:20px}li{margin:12px 0}.pass{color:#176b50}.fail{color:#b02030}</style></head><body><h1>計算・比較テスト</h1><p id="summary"></p><ol id="results"></ol><script src="app.js"></script><script>
+(function(){
+ const p=PriceCompare, results=[];
+ function test(name, fn){try{if(!fn())throw Error('期待値と異なります');results.push({name,ok:true});}catch(e){results.push({name,ok:false,error:e.message});}}
+ const eq=(a,b)=>Math.abs(a-b)<1e-9;
+ [['15×3',45],['11×4',44],['398−20%',318.4],['(198+98)÷2',148],['0.1+0.2',.3],['100+10%',110],['100×20%',20],['100÷20%',500],['20%',.2],['2+3×4',14]].forEach(([s,n])=>test('式 '+s+' → '+n,()=>eq(p.calculate(s),n)));
+ test('398に半額 → 199',()=>p.calculate(p.quick('398',.5))===199);
+ test('298に×1.08 → 321.84',()=>p.calculate(p.quick('298',1.08))===321.84);
+ test('加減算を含む割引は式全体に適用',()=>p.calculate(p.quick('198+98',.8))===236.8);
+ for(const s of ['5÷0','1+','(2','2..3','2a',''])test('不正な式を拒否: '+(s||'空欄'),()=>{try{p.calculate(s);return false;}catch(e){return true;}});
+ test('価格を小数第2位まで保持',()=>p.roundPrice(1.235)===1.24);
+ const cards=[{price:298,quantity:45},{price:258,quantity:44},{price:null,quantity:null},{price:0,quantity:1}];
+ const r=p.compare(cards,'g');
+ test('比較例 A 662.22円 / B 586.36円 / B最安 / 差75.86円・12.9%',()=>r[0].value.toFixed(2)==='662.22'&&r[1].value.toFixed(2)==='586.36'&&r[1].cheapest&&!r[0].cheapest&&r[0].difference.toFixed(2)==='75.86'&&r[0].percent.toFixed(1)==='12.9');
+ test('1商品では最安・差を表示しない',()=>p.compare([cards[0]],'g')[0].difference===null&&!p.compare([cards[0]],'g')[0].cheapest);
+ test('4商品から最安を判定',()=>p.compare([4,3,2,1].map(price=>({price,quantity:1})),'個').every((r,i)=>r.cheapest===(i===3)));
+ test('同額はすべて最安',()=>p.compare([{price:100,quantity:10},{price:200,quantity:20}],'ml').every(r=>r.cheapest));
+ test('不足・0・負数は比較対象外',()=>p.compare([{price:0,quantity:1},{price:10,quantity:-1},{price:null,quantity:null}],'g').every(r=>r.value===null));
+ test('単位の基準',()=>['g','ml','個','枚','ロール','m'].every(u=>p.unitPrice(100,10,u)===(['g','ml'].includes(u)?1000:10)));
+ if(typeof document!=='undefined'){document.querySelector('#summary').textContent=results.filter(r=>r.ok).length+' / '+results.length+' 合格';document.querySelector('#results').innerHTML=results.map(r=>'<li class="'+(r.ok?'pass':'fail')+'">'+(r.ok?'合格':'不合格')+'：'+r.name+(r.error?' '+r.error:'')+'</li>').join('');}
+ if(typeof module!=='undefined')module.exports=results;
+})();
+</script></body></html>
